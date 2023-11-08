@@ -38,7 +38,9 @@ public class UniqueLoopType3HiddenHint extends UniqueLoopHint {
 
     @Override
     public double getDifficulty() {
-        double toAdd = (hiddenIndexes.length - 1) * 0.1; // Pair=0.1, Quad=0.3
+        //double toAdd = (hiddenIndexes.length - 1) * 0.1; // Pair=0.1, Quad=0.3
+        //lksudoku: For pair to be 0.1, the -1 should be removed, length is already minus 1
+        double toAdd = (hiddenIndexes.length) * 0.1; // Pair=0.1, Quad=0.3
         return super.getDifficulty() + toAdd;
     }
 

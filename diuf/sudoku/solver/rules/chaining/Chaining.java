@@ -818,7 +818,22 @@ public class Chaining implements IndirectHintProducer {
                                 nested = (ChainingHint)hint;
                             Map<Cell,BitSet> removable = hint.getRemovablePotentials();
                             assert !removable.isEmpty();
-                            for (Cell cell : removable.keySet()) {
+                            // lksudoku: We sort the removable potentials so that all runs will yield the
+                            // same resulting chains, if not sorted, same puzzle may get different chains
+                            // when there are different chains for same contradition, thus causing different
+                            // rating of same puzzle at different times
+							List<Cell> sortedRemKeys=new ArrayList<Cell>(removable.keySet());
+					        Collections.sort(sortedRemKeys, new Comparator<Cell>() {
+					            public int compare(Cell c1, Cell c2) {
+					            	if (c1.getX() != c2.getX())
+					            		return c1.getX() - c2.getX();
+					            	if (c1.getY() != c2.getY())
+					            		return c1.getY() - c2.getY();
+					            	return c1.getPotentialValues().nextSetBit(0)-c2.getPotentialValues().nextSetBit(0);
+					            }
+					        });
+
+                            for (Cell cell : sortedRemKeys) {
                                 BitSet values = removable.get(cell);
                                 for (int value = values.nextSetBit(0); value != -1; value = values.nextSetBit(value + 1)) {
                                     Potential.Cause cause = Potential.Cause.Advanced;

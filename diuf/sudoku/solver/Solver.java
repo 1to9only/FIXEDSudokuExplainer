@@ -1,6 +1,6 @@
 /*
  * Project: Sudoku Explainer
- * Copyright (C) 2006-2009 Nicolas Juillerat
+ * Copyright (C) 2006-2007 Nicolas Juillerat
  * Available under the terms of the Lesser General Public License (LGPL)
  */
 package diuf.sudoku.solver;
@@ -50,7 +50,6 @@ public class Solver {
     public double difficulty;
     public double pearl;
     public double diamond;
-    public char want;
 
     private Grid grid;
     private List<HintProducer> directHintProducers;
@@ -499,7 +498,7 @@ public class Solver {
                 } catch (InterruptedException willHappen) {}
                 Hint hint = accu.getHint();
                 if (hint == null) {
-                    difficulty = 20.0;
+		    difficulty = 20.0;
                     break;
                 }
                 assert hint instanceof Rule;
@@ -508,20 +507,11 @@ public class Solver {
                 if (ruleDiff > difficulty)
                     difficulty = ruleDiff;
                 hint.apply();
-                if (pearl == 0.0) {
-                    if (diamond == 0.0)
-                        diamond = difficulty;
-                    if (hint.getCell() != null) {
-                        if (want == 'd' && difficulty > diamond) {
-                            difficulty = 20.0;
-                            break;
-                        }
-                        pearl = difficulty;
-                    }
-                }
-                else if (want != 0 && difficulty > pearl) {
-                    difficulty = 20.0;
-                    break;
+		if (pearl == 0.0) {
+		    if (diamond == 0.0)
+			diamond = difficulty;
+		    if (hint.getCell() != null)
+		        pearl = difficulty;
                 }
             }
         } finally {

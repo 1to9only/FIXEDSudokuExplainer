@@ -155,29 +155,32 @@ public class BivalueUniversalGrave implements IndirectHintProducer {
     private void addBug3Hint(HintsAccumulator accu, List<Cell> bugCells,
             Map<Cell, BitSet> extraValues, BitSet allExtraValues, Set<Cell> commonCells,
             Grid grid) throws InterruptedException {
-        for (Class<? extends Grid.Region> regionType : grid.getRegionTypes()) {
-            // Look for a region of this type shared by bugCells
-            Grid.Region region = null;
-            for (Cell cell : bugCells) {
-                Grid.Region cellRegion = grid.getRegionAt(regionType, cell.getX(), cell.getY());
-                if (region == null) {
-                    region = cellRegion;
-                } else if (!region.equals(cellRegion)) {
-                    // Cells do not share a region of this type
-                    region = null;
-                    break;
-                }
-            }
-            if (region != null) {
-                // A shared region of type regionType has been found
-                // Gather other cells of this region
-                List<Cell> regionCells = new ArrayList<Cell>();
-                for (Cell cell : commonCells) {
-                    if (grid.getRegionAt(regionType, cell).equals(region))
-                        regionCells.add(cell);
-                }
-                // Iterate on degree
-                for (int degree = 2; degree <= 6; degree++) {
+
+        // lksudoku: start with degree iteration to find smallest degree first
+        // Iterate on degree
+        for (int degree = 2; degree <= 6; degree++) {
+	        for (Class<? extends Grid.Region> regionType : grid.getRegionTypes()) {
+	            // Look for a region of this type shared by bugCells
+	            Grid.Region region = null;
+	            for (Cell cell : bugCells) {
+	                Grid.Region cellRegion = grid.getRegionAt(regionType, cell.getX(), cell.getY());
+	                if (region == null) {
+	                    region = cellRegion;
+	                } else if (!region.equals(cellRegion)) {
+	                    // Cells do not share a region of this type
+	                    region = null;
+	                    break;
+	                }
+	            }
+	            if (region != null) {
+	                // A shared region of type regionType has been found
+	                // Gather other cells of this region
+	                List<Cell> regionCells = new ArrayList<Cell>();
+	                for (Cell cell : commonCells) {
+	                    if (grid.getRegionAt(regionType, cell).equals(region))
+	                        regionCells.add(cell);
+	                }
+
                     // Iterate on permutations of the missing (degree - 1) cells
                     if (regionCells.size() >= degree) {
                         Permutations perm = new Permutations(degree - 1, regionCells.size());
@@ -231,9 +234,9 @@ public class BivalueUniversalGrave implements IndirectHintProducer {
                             } // if (otherCommon.cardinality() == degree)
                         } // while (perm.hasNext())
                     } // if (regionCells.size() >= degree)
-                } // for (degree)
-            } // if (region != null)
-        } // for (regionType)
+                } // if (region != null)
+            } // for (regionType)
+        } // for (degree)
     }
 
     private void addBug4Hint(HintsAccumulator accu, List<Cell> bugCells,

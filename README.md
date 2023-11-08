@@ -1,3 +1,7 @@
+### This is a copy of files found at http://sites.google.com/site/sefixshare
+
+### The site now requires Sign in to continue to Google Sites...
+
 # SudokuExplainer (SE)
 
 ## 1.2.1

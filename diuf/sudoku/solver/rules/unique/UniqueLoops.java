@@ -143,7 +143,6 @@ public class UniqueLoops implements IndirectHintProducer {
             List<Cell> loop, int allowedEx, BitSet exValues,
             Class<? extends Grid.Region> lastRegionType, Collection<List<Cell>> results) {
         loop.add(cell);
-        exValues = (BitSet)exValues.clone(); // Ensure we cleanup ourself
         for (Class<? extends Grid.Region> regionType : grid.getRegionTypes()) {
             if (!regionType.equals(lastRegionType)) {
                 Grid.Region region = grid.getRegionAt(regionType, cell.getX(), cell.getY());
@@ -155,9 +154,10 @@ public class UniqueLoops implements IndirectHintProducer {
                     } else if (!loop.contains(next)) {
                         BitSet potentials = next.getPotentialValues();
                         if (potentials.get(v1) && potentials.get(v2)) {
-                            exValues.or(potentials);
-                            exValues.clear(v1);
-                            exValues.clear(v2);
+                        		BitSet newExValues = (BitSet)exValues.clone(); // Ensure we cleanup ourself
+                            newExValues.or(potentials);
+                            newExValues.clear(v1);
+                            newExValues.clear(v2);
                             int cardinality = potentials.cardinality();
                             /*
                              * We can continue if
@@ -167,11 +167,11 @@ public class UniqueLoops implements IndirectHintProducer {
                              * (3) The cell has extra values and the maximum number of cells with
                              * extra values, 2, is not reached
                              */
-                            if (cardinality == 2 || exValues.cardinality() == 1 || allowedEx > 0) {
+                            if (cardinality == 2 || newExValues.cardinality() == 1 || allowedEx > 0) {
                                 int newAllowedEx = allowedEx;
                                 if (cardinality > 2)
                                     newAllowedEx -= 1;
-                                checkForLoops(grid, next, v1, v2, loop, newAllowedEx, exValues,
+                                checkForLoops(grid, next, v1, v2, loop, newAllowedEx, newExValues,
                                         regionType, results);
                             }
                         }
@@ -280,7 +280,7 @@ public class UniqueLoops implements IndirectHintProducer {
         extra.clear(v1);
         extra.clear(v2);
         // Look for Naked and hidden Sets. Iterate on degree
-        for (int degree = extra.cardinality(); degree <= 7; degree++) {
+        for (int degree = 2; degree <= 7; degree++) {
             for (Class<? extends Grid.Region> regionType : grid.getRegionTypes()) {
                 Grid.Region region = grid.getRegionAt(regionType, c1);
                 if (region.equals(grid.getRegionAt(regionType, c2))) {
@@ -290,7 +290,7 @@ public class UniqueLoops implements IndirectHintProducer {
                     int index2 = region.indexOf(c2);
 
                     // Look for naked sets
-                    if (degree * 2 <= nbEmptyCells) {
+                    if ( (degree * 2 <= nbEmptyCells) && (degree >= extra.cardinality()) ) {
                         // Look on combinations of cells that include c1 but not c2
                         Permutations perm2 = new Permutations(degree, 9);
                         while (perm2.hasNext()) {
