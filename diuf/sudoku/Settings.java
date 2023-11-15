@@ -8,6 +8,8 @@ package diuf.sudoku;
 import java.util.*;
 import java.util.prefs.*;
 
+import java.io.PrintWriter;
+
 /**
  * Global settings of the application.
  * Implemented using the singleton pattern.
@@ -16,7 +18,7 @@ public class Settings {
 
     public final static int VERSION = 1;
     public final static int REVISION = 2;
-    public final static String SUBREV = ".5.0";
+    public final static String SUBREV = ".8.0";
 
     private static Settings instance = null;
 
@@ -26,6 +28,10 @@ public class Settings {
     private String lookAndFeelClassName = null;
 
     private EnumSet<SolvingTechnique> techniques;
+
+	// serate log steps
+	private boolean 		isLogSolution = false;
+	private PrintWriter		logWriter = null;
 
 
     private Settings() {
@@ -38,6 +44,19 @@ public class Settings {
             instance = new Settings();
         return instance;
     }
+
+	public void setLog( PrintWriter writeLog ) {
+		isLogSolution = true;
+		logWriter = writeLog;
+	}
+
+	public boolean isLog() {
+		return isLogSolution;
+	}
+
+	public PrintWriter getLogWriter() {
+		return logWriter;
+	}
 
     public void setRCNotation(boolean isRCNotation) {
         this.isRCNotation = isRCNotation;

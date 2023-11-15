@@ -26,6 +26,12 @@ public class BivalueUniversalGrave implements IndirectHintProducer {
         Map<Cell, BitSet> bugValues = new HashMap<Cell, BitSet>();
         BitSet allBugValues = new BitSet(10);
         Set<Cell> commonCells = null;
+
+		// lksudoku handle the case of type 2, a cell with another on every region
+		Set<Cell> allExtraCells = null;
+		int onlyValue = 0;
+		boolean oneValue = true;
+
         for (Class<? extends Grid.Region> regionType : grid.getRegionTypes()) {
             Grid.Region[] regions = grid.getRegions(regionType);
             for (int i = 0; i < regions.length; i++) {
@@ -45,6 +51,19 @@ public class BivalueUniversalGrave implements IndirectHintProducer {
                             if (cellCardinality >= 3)
                                 newBugCells.add(cell);
                         }
+
+						if (allExtraCells == null) {
+							allExtraCells = new LinkedHashSet<Cell>(newBugCells);
+							onlyValue = value;
+						} else if (oneValue) {
+							if ( onlyValue == value ) {
+								allExtraCells.addAll(newBugCells);
+							} else {
+								oneValue = false;
+							}
+						}
+
+
                         /*
                          * If there are two or more positions falling in a bug cell, we cannot
                          * decide which one is the buggy one. Just do nothing because another
@@ -78,6 +97,26 @@ public class BivalueUniversalGrave implements IndirectHintProducer {
                 } // for value
             } // for i
         } // for regionType
+
+		if (oneValue && allExtraCells.size() > bugCells.size()) {
+			allExtraCells.removeAll( bugCells );
+			for (Cell cell: allExtraCells) {
+				bugCells.add(cell);
+				bugValues.put(cell, new BitSet(10));
+				bugValues.get(cell).set(onlyValue);
+				Cell twin = temp.getCell(cell.getX(), cell.getY());
+				twin.removePotentialValue(onlyValue);
+				if (commonCells == null)
+					commonCells = new LinkedHashSet<Cell>(cell.getHouseCells());
+				else
+					commonCells.retainAll(cell.getHouseCells());
+				commonCells.removeAll(bugCells);
+				if (bugCells.size() > 1 && allBugValues.cardinality() > 1
+						&& commonCells.isEmpty())
+					return; // None of type 1, 2 or 3
+
+			}
+		}
 
         // When bug values have been removed, all remaining empty cells must have
         // exactly two potential values. Check it

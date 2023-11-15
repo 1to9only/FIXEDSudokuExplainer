@@ -1,6 +1,6 @@
 /*
  * Project: Sudoku Explainer
- * Copyright (C) 2006-2007 Nicolas Juillerat
+ * Copyright (C) 2006-2009 Nicolas Juillerat
  * Available under the terms of the Lesser General Public License (LGPL)
  */
 package diuf.sudoku.solver;
@@ -14,6 +14,8 @@ import diuf.sudoku.solver.rules.*;
 import diuf.sudoku.solver.rules.chaining.*;
 import diuf.sudoku.solver.rules.unique.*;
 import diuf.sudoku.tools.*;
+
+import java.io.PrintWriter;
 
 /**
  * The solver for Sudoku grids.
@@ -50,6 +52,7 @@ public class Solver {
     public double difficulty;
     public double pearl;
     public double diamond;
+    public char want;
 
     private Grid grid;
     private List<HintProducer> directHintProducers;
@@ -79,6 +82,32 @@ public class Solver {
         }
 
     } // class DefaultHintsAccumulator
+
+	// lksudoku: batch mode accumulator, accumulate until higher
+	// rating is added
+    private class SmallestHintsAccumulator implements HintsAccumulator {
+
+        private final List<Hint> result;
+
+		// dif is 0.0 at start, and changes to first added rating
+		private double dif = 0.0;
+
+        private SmallestHintsAccumulator(List<Hint> result) {
+            super();
+            this.result = result;
+        }
+
+        public void add(Hint hint) throws InterruptedException {
+			if (dif == 0.0) {
+				dif = ((Rule)hint).getDifficulty();
+			} else if ( ((Rule)hint).getDifficulty() != dif ) {
+				throw new InterruptedException();
+			}
+            if (!result.contains(hint))
+                result.add(hint);
+        }
+
+    } // class SmallestHintsAccumulator
 
     private void addIfWorth(SolvingTechnique technique, Collection<HintProducer> coll, HintProducer producer) {
         if (Settings.getInstance().getTechniques().contains(technique))
@@ -476,6 +505,9 @@ public class Solver {
     public void getDifficulty() {
         Grid backup = new Grid();
         grid.copyTo(backup);
+		boolean logStep = Settings.getInstance().isLog();
+		PrintWriter logWriter = Settings.getInstance().getLogWriter();
+		int stepCount = 0;
         try {
             difficulty = Double.NEGATIVE_INFINITY;
             pearl = 0.0;
@@ -498,23 +530,152 @@ public class Solver {
                 } catch (InterruptedException willHappen) {}
                 Hint hint = accu.getHint();
                 if (hint == null) {
-		    difficulty = 20.0;
+		    		difficulty = 20.0;
                     break;
                 }
                 assert hint instanceof Rule;
                 Rule rule = (Rule)hint;
+
                 double ruleDiff = rule.getDifficulty();
+
+				//lksudoku, log steps
+				if (logStep) {
+					++stepCount;
+					logWriter.println("Step "+stepCount+": rate "+ruleDiff);
+					logWriter.println(rule.toString());
+				}
+
                 if (ruleDiff > difficulty)
                     difficulty = ruleDiff;
                 hint.apply();
-		if (pearl == 0.0) {
-		    if (diamond == 0.0)
-			diamond = difficulty;
-		    if (hint.getCell() != null)
-		        pearl = difficulty;
-                }
+				if (pearl == 0.0) {
+				    if (diamond == 0.0)
+						diamond = difficulty;
+				    if (hint.getCell() != null) {
+						if (want == 'd' && difficulty > diamond) {
+				            difficulty = 20.0;
+		                    break;
+		                }
+				        pearl = difficulty;
+				    }
+		        }
+				else if (want != 0 && difficulty > pearl) {
+				    difficulty = 20.0;
+		            break;
+	            }
             }
         } finally {
+            backup.copyTo(grid);
+        }
+    }
+
+	// lksudoku added batch rating ability
+	// apply all concurrent moves of lowest rating
+    public void getBatchDifficulty() {
+        Grid backup = new Grid();
+        grid.copyTo(backup);
+
+		boolean logStep = Settings.getInstance().isLog();
+		PrintWriter logWriter = Settings.getInstance().getLogWriter();
+		int batchCount = 0;
+
+        try {
+            difficulty = Double.NEGATIVE_INFINITY;
+            pearl = 0.0;
+            diamond = 0.0;
+            while (!isSolved()) {
+				List<Hint> result = new ArrayList<Hint>();
+				SmallestHintsAccumulator accu = new SmallestHintsAccumulator(result);
+                try {
+                    for (HintProducer producer : directHintProducers) {
+                        producer.getHints(grid, accu);
+						if (!result.isEmpty()) {
+							throw new InterruptedException();
+						}
+                    }
+                    for (IndirectHintProducer producer : indirectHintProducers) {
+                        producer.getHints(grid, accu);
+						if (!result.isEmpty()) {
+							throw new InterruptedException();
+						}
+                    }
+                    for (IndirectHintProducer producer : chainingHintProducers) {
+                        producer.getHints(grid, accu);
+						if (!result.isEmpty()) {
+							throw new InterruptedException();
+						}
+                    }
+                    for (IndirectHintProducer producer : chainingHintProducers2) {
+                        producer.getHints(grid, accu);
+						if (!result.isEmpty()) {
+							throw new InterruptedException();
+						}
+                    }
+                    for (IndirectHintProducer producer : advancedHintProducers) {
+                        producer.getHints(grid, accu);
+						if (!result.isEmpty()) {
+							throw new InterruptedException();
+						}
+                    }
+                    for (IndirectHintProducer producer : experimentalHintProducers) {
+                        producer.getHints(grid, accu);
+						if (!result.isEmpty()) {
+							throw new InterruptedException();
+						}
+                    }
+                } catch (InterruptedException willHappen) {}
+				
+                if (result.isEmpty()) {
+		    		difficulty = 20.0;
+                    break;
+                }
+
+				//lksudoku, log steps
+				if (logStep) {
+					++batchCount;
+				}
+				int batchSubStep = 0;
+
+				// apply hints of same rating
+				for (Hint hint: result)
+				{
+	                assert hint instanceof Rule;
+	                Rule rule = (Rule)hint;
+	                double ruleDiff = rule.getDifficulty();
+
+					if (logStep) {
+						if (++batchSubStep == 1) {
+							logWriter.println("Batch "+batchCount+": rate "+ruleDiff);
+						}
+						logWriter.println("Step "+batchCount+"."+batchSubStep+", "+rule.toString());
+					}
+
+	                if (ruleDiff > difficulty)
+	                    difficulty = ruleDiff;
+	                hint.apply();
+
+
+					if (pearl == 0.0) {
+						if (diamond == 0.0)
+							diamond = difficulty;
+						if (hint.getCell() != null) {
+							if (want == 'd' && difficulty > diamond) {
+								difficulty = 20.0;
+								break;
+							}
+							pearl = difficulty;
+						}
+					}
+					else if (want != 0 && difficulty > pearl) {
+						difficulty = 20.0;
+						break;
+					}
+ 	            }
+				if ( difficulty == 20.0 ) {
+					break;
+				}
+           	}
+		} finally {
             backup.copyTo(grid);
         }
     }
