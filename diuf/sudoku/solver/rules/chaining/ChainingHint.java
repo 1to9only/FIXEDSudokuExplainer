@@ -374,20 +374,7 @@ public abstract class ChainingHint extends IndirectHint implements Rule, HasPare
     }
 
     protected int getAncestorCount(Potential child) {
-        Collection<Potential> ancestors = new HashSet<Potential>();
-        Collection<Potential> todo = new ArrayList<Potential>();
-        todo.add(child);
-        while (!todo.isEmpty()) {
-            Collection<Potential> next = new ArrayList<Potential>();
-            for (Potential p : todo) {
-                if (!ancestors.contains(p)) {
-                    ancestors.add(p);
-                    next.addAll(p.parents);
-                }
-            }
-            todo = next;
-        }
-        return ancestors.size();
+		return child.getAncestorCount();
     }
 
     protected String getHtmlChain(Potential dst) {

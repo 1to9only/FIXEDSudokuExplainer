@@ -16,7 +16,7 @@ import diuf.sudoku.solver.*;
 public class serate {
     static String FORMAT = "%r/%p/%d";
     static String RELEASE = "2011-01-07";
-    static String VERSION = "1.2.8.0";
+    static String VERSION = "1.2.9.0";
 
     static void help(int html) {
 	if (html != 0) {
@@ -136,7 +136,7 @@ public class serate {
 					throw new InterruptedException();
 				}
 
-				SolvingTechnique curTech = (SolvingTechnique)iter.next();
+				SolvingTechnique curTech = iter.next();
 				if ( techniques.charAt(i) == '1' ) {
 					useTechniques.add(curTech);
 				} else if ( techniques.charAt(i) != '0' ) {
